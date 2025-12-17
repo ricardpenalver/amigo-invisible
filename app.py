@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import csv
 import os
 import io
-from supabase import create_client, Client
+import requests
 from dotenv import load_dotenv
 
 # Load environment variables from .env file (if exists)
@@ -27,15 +27,27 @@ COL_MAPPING = {
 }
 INV_COL_MAPPING = {v: k for k, v in COL_MAPPING.items()}
 
+def get_supabase_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+
 def load_data():
     """
     Returns a list of dictionaries with internal keys: phone, name, relationship, email
     """
     if USE_SUPABASE:
         try:
-            supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-            response = supabase.table('participants').select("*").execute()
-            data = response.data # List of dicts
+            url = f"{SUPABASE_URL}/rest/v1/participants?select=*"
+            response = requests.get(url, headers=get_supabase_headers(), timeout=10)
+            
+            if response.status_code != 200:
+                print(f"Error loading from Supabase: {response.text}")
+                return []
+                
+            data = response.json() # List of dicts
             
             normalized_data = []
             if data:
@@ -82,10 +94,20 @@ def load_data():
 def save_email(phone, email):
     if USE_SUPABASE:
         try:
-            supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-            response = supabase.table('participants').update({'email': email}).eq('id', phone).execute()
+            url = f"{SUPABASE_URL}/rest/v1/participants?id=eq.{phone}"
+            # Patch request to update
+            response = requests.patch(
+                url, 
+                json={'email': email}, 
+                headers={**get_supabase_headers(), "Prefer": "return=representation"}, # Return data to verify
+                timeout=10
+            )
             
-            if not response.data:
+            if response.status_code not in [200, 204]:
+                return False, f"Supabase Error: {response.text}"
+            
+            data = response.json()
+            if not data:
                  return False, "No se encontró el usuario para actualizar."
                  
             return True, ""
