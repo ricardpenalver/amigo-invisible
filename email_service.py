@@ -61,3 +61,67 @@ def send_assignment_email(to_email, giver_name, receiver_name):
     except Exception as e:
         print(f"Error sending email to {to_email}: {e}")
         return False
+
+def send_admin_notification(admin_email):
+    """
+    Sends a notification to Ricardo when all participants have registered.
+    """
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 465
+    
+    sender_email = os.environ.get("EMAIL_USER")
+    password = os.environ.get("EMAIL_PASSWORD")
+
+    if not sender_email or not password:
+        return False
+
+    subject = "✨ ¡La Magia está lista! Registro completado"
+    
+    html = f"""
+    <html>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; background-color: #f4f4f4; padding: 20px;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 15px; border: 2px solid #d42426; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span style="font-size: 50px;">🎅</span>
+            </div>
+            <h1 style="color: #d42426; text-align: center; margin-top: 0;">¡Hola Ricardo!</h1>
+            <p style="font-size: 16px; line-height: 1.6; text-align: center;">
+                Ya se han registrado todos los familiares en la aplicación del amigo invisible. ✨
+            </p>
+            <p style="font-size: 16px; line-height: 1.6; text-align: center; font-weight: bold; color: #0c0;">
+                ¡Ya puedes activar el sorteo y enviaremos los mails a todos los participantes!
+            </p>
+            
+            <div style="background-color: #fff5f5; border: 1px dashed #d42426; padding: 15px; text-align: center; margin: 25px 0; border-radius: 10px;">
+                <p style="margin: 0; font-size: 14px; color: #555;">Recuerda usar tu ADMIN_SECRET_KEY para disparar el sorteo:</p>
+                <code style="display: block; margin-top: 10px; font-size: 18px; color: #d42426; font-weight: bold;">/api/admin/draw?key=...</code>
+            </div>
+
+            <p style="text-align: center; font-size: 18px; color: #333; margin-top: 30px;">
+                ¡Saludos y felices Reyes! 👑👑👑
+            </p>
+            
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+            <p style="text-align: center; font-size: 10px; color: #999;">
+                Enviado con magia desde tu servidor de Amigo Invisible 2026.
+            </p>
+        </div>
+      </body>
+    </html>
+    """
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = subject
+    message["From"] = sender_email
+    message["To"] = admin_email
+    message.attach(MIMEText(html, "html"))
+
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context) as server:
+            server.login(sender_email, password)
+            server.sendmail(sender_email, admin_email, message.as_string())
+        return True
+    except Exception as e:
+        print(f"Error sending admin notification: {e}")
+        return False

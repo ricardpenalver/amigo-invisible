@@ -204,6 +204,19 @@ def register_email():
         if not success:
              return jsonify({'success': False, 'message': f'Error guardando: {error_msg}'}), 200
         
+        # --- NEW: Check if everyone is registered ---
+        try:
+            # Re-load data to check updated status
+            all_participants = load_data()
+            if all_participants and all(p.get('email') for p in all_participants):
+                admin_email = os.environ.get("EMAIL_USER")
+                if admin_email:
+                    email_service.send_admin_notification(admin_email)
+                    print("Admin notified: Registration complete!")
+        except Exception as e:
+            print(f"Warning: Failed to check/send admin notification: {e}")
+        # ---------------------------------------------
+
         # Get user name again manually
         user_name = next((p['name'] for p in participants if p['phone'] == phone_input), "")
         
