@@ -152,13 +152,15 @@ def register_email():
         # Verify user exists first
         df = load_data()
         if phone_input not in df['phone'].values:
-            return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 404
+            return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 200 # Changed to 200 to ensure JSON
         
         # Save
         success, error_msg = save_email(phone_input, email_input)
         
         if not success:
-             return jsonify({'success': False, 'message': f'Error guardando: {error_msg}'}), 500
+             # Return as 200 but with success=False so frontend indicates error
+             # This prevents Vercel from overriding the body with HTML 500
+             return jsonify({'success': False, 'message': f'Error guardando: {error_msg}'}), 200
         
         # Get user name again for the success message
         user_name = df[df['phone'] == phone_input].iloc[0]['name']
@@ -169,7 +171,7 @@ def register_email():
         })
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
-        return jsonify({'success': False, 'message': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': f'Error interno del servidor: {str(e)}'}), 200 # Changed to 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
