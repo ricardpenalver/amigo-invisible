@@ -126,11 +126,15 @@ def send_admin_notification(admin_email):
     message.attach(MIMEText(html, "html"))
 
     try:
+        print(f"DEBUG SMTP: Connecting to {smtp_server}:{smtp_port}...")
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context) as server:
+            print(f"DEBUG SMTP: Logging in as {sender_email}...")
             server.login(sender_email, password)
+            print(f"DEBUG SMTP: Sending mail to {admin_email}...")
             server.sendmail(sender_email, admin_email, message.as_string())
+        print("DEBUG SMTP: Success.")
         return True
     except Exception as e:
-        print(f"Error sending admin notification: {e}")
+        print(f"DEBUG SMTP ERROR: {e}")
         return False

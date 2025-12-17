@@ -208,13 +208,22 @@ def register_email():
         try:
             # Re-load data to check updated status
             all_participants = load_data()
-            if all_participants and all(p.get('email') for p in all_participants):
+            emails_found = [p.get('name') for p in all_participants if p.get('email')]
+            total_count = len(all_participants)
+            registered_count = len(emails_found)
+            
+            print(f"DEBUG: Registration progress: {registered_count}/{total_count}")
+            
+            if total_count > 0 and registered_count == total_count:
                 admin_email = os.environ.get("EMAIL_USER")
+                print(f"DEBUG: All registered! Attempting to notify admin: {admin_email}")
                 if admin_email:
-                    email_service.send_admin_notification(admin_email)
-                    print("Admin notified: Registration complete!")
+                    success_notify = email_service.send_admin_notification(admin_email)
+                    print(f"DEBUG: Admin notification result: {success_notify}")
+                else:
+                    print("DEBUG: Admin email (EMAIL_USER) not found in environment.")
         except Exception as e:
-            print(f"Warning: Failed to check/send admin notification: {e}")
+            print(f"DEBUG ERROR: Admin notification failure: {e}")
         # ---------------------------------------------
 
         # Get user name again manually
