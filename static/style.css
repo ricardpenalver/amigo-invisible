@@ -1,0 +1,158 @@
+:root {
+    --primary: #FF3B30; /* Christmas Red */
+    --primary-hover: #D6332A;
+    --background: #F2F2F7;
+    --card-bg: #FFFFFF;
+    --text-main: #1C1C1E;
+    --text-muted: #8E8E93;
+    --border-radius: 20px;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    --font-family: 'Outfit', sans-serif;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 440px;
+    text-align: center;
+}
+
+header h1 {
+    font-weight: 600;
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.header-icon {
+    height: 1.2em;
+    width: auto;
+}
+
+header p {
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+}
+
+.highlight {
+    color: var(--primary);
+}
+
+.card {
+    background: var(--card-bg);
+    padding: 2.5rem 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    transition: all 0.4s ease;
+    opacity: 0;
+    transform: translateY(20px);
+    display: none; /* Hidden by default */
+}
+
+.card.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+    animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.input-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+input {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+    border: 2px solid #E5E5EA;
+    border-radius: 12px;
+    font-family: var(--font-family);
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--primary);
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 1rem;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+.error-message {
+    color: var(--primary);
+    font-size: 0.85rem;
+    margin-top: 5px;
+    display: block;
+    min-height: 1.2em;
+}
+
+.success-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: bounce 1s infinite alternate;
+}
+
+@keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-10px); }
+}
+
+footer {
+    margin-top: 3rem;
+    font-size: 0.8rem;
+    color: #AEAEB2;
+}
