@@ -93,14 +93,18 @@ def save_email(phone, email):
             return False
 
     # Fallback: Save to CSV
-    df = load_data() # This loads from CSV if USE_SUPABASE is false
-    if phone in df['phone'].values:
-        df.loc[df['phone'] == phone, 'email'] = email
-        
-        # Save back
-        df_save = df.rename(columns=COL_MAPPING)
-        df_save.to_csv(CSV_FILE, sep=';', index=False)
-        return True
+    try:
+        df = load_data() # This loads from CSV if USE_SUPABASE is false
+        if phone in df['phone'].values:
+            df.loc[df['phone'] == phone, 'email'] = email
+            
+            # Save back
+            df_save = df.rename(columns=COL_MAPPING)
+            df_save.to_csv(CSV_FILE, sep=';', index=False)
+            return True
+    except Exception as e:
+        print(f"Error saving to CSV (Fallback): {e}")
+    
     return False
 
 @app.route('/')
@@ -132,28 +136,32 @@ def check_user():
 
 @app.route('/api/register_email', methods=['POST'])
 def register_email():
-    data = request.json
-    phone_input = str(data.get('phone')).strip()
-    email_input = str(data.get('email')).strip()
-    
-    # Verify user exists first
-    df = load_data()
-    if phone_input not in df['phone'].values:
-        return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 404
-    
-    # Save
-    success = save_email(phone_input, email_input)
-    
-    if not success:
-         return jsonify({'success': False, 'message': 'Error guardando datos'}), 500
-    
-    # Get user name again for the success message
-    user_name = df[df['phone'] == phone_input].iloc[0]['name']
-    
-    return jsonify({
-        'success': True,
-        'message': f"Gracias {user_name}, tu correo ha sido registrado correctamente."
-    })
+    try:
+        data = request.json
+        phone_input = str(data.get('phone')).strip()
+        email_input = str(data.get('email')).strip()
+        
+        # Verify user exists first
+        df = load_data()
+        if phone_input not in df['phone'].values:
+            return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 404
+        
+        # Save
+        success = save_email(phone_input, email_input)
+        
+        if not success:
+             return jsonify({'success': False, 'message': 'Error guardando datos. Posible error de conexión con la base de datos.'}), 500
+        
+        # Get user name again for the success message
+        user_name = df[df['phone'] == phone_input].iloc[0]['name']
+        
+        return jsonify({
+            'success': True,
+            'message': f"Gracias {user_name}, tu correo ha sido registrado correctamente."
+        })
+    except Exception as e:
+        print(f"CRITICAL ERROR: {e}")
+        return jsonify({'success': False, 'message': f'Error interno del servidor: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
