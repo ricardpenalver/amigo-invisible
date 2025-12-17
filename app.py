@@ -160,10 +160,6 @@ def save_email(phone, email):
 def index():
     return render_template('index.html')
 
-@app.route('/api/test', methods=['GET'])
-def test_connection():
-    return jsonify({'status': 'ok', 'message': 'Server is running'})
-
 @app.route('/api/check_user', methods=['POST'])
 def check_user():
     try:
