@@ -2,7 +2,9 @@ from flask import Flask, render_template, request, jsonify
 import csv
 import os
 import io
-import requests
+import json
+import urllib.request
+import urllib.error
 from dotenv import load_dotenv
 
 # Load environment variables from .env file (if exists)
@@ -41,19 +43,19 @@ def load_data():
     if USE_SUPABASE:
         try:
             url = f"{SUPABASE_URL}/rest/v1/participants?select=*"
-            response = requests.get(url, headers=get_supabase_headers(), timeout=10)
+            req = urllib.request.Request(url, headers=get_supabase_headers())
             
-            if response.status_code != 200:
-                print(f"Error loading from Supabase: {response.text}")
-                return []
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status != 200:
+                    print(f"Error loading from Supabase: Status {response.status}")
+                    return []
                 
-            data = response.json() # List of dicts
+                # Manual decode
+                data = json.loads(response.read().decode('utf-8'))
             
             normalized_data = []
             if data:
                 for row in data:
-                    # Supabase/Postgres might return keys in lowercase.
-                    # We map them to our internal structure.
                     normalized_row = {
                         'phone': str(row.get('id') or row.get('ID') or "").strip(),
                         'name': row.get('name') or row.get('nombre') or "",
@@ -62,6 +64,9 @@ def load_data():
                     }
                     normalized_data.append(normalized_row)
             return normalized_data
+        except urllib.error.HTTPError as e:
+            print(f"HTTP Error in load_data: {e.code} - {e.read().decode()}")
+            return []
         except Exception as e:
             print(f"Error loading from Supabase: {e}")
             return []
@@ -73,11 +78,8 @@ def load_data():
     data = []
     try:
         with open(CSV_FILE, mode='r', encoding='utf-8') as f:
-            # Detect separator if needed, but we enforced semicolon
             reader = csv.DictReader(f, delimiter=';')
             for row in reader:
-                # Row keys are CSV headers (ID, nombre, etc)
-                # Map to internal
                 internal_row = {
                     'phone': str(row.get(COL_MAPPING['phone'], '')).strip(),
                     'name': row.get(COL_MAPPING['name'], ''),
@@ -95,22 +97,29 @@ def save_email(phone, email):
     if USE_SUPABASE:
         try:
             url = f"{SUPABASE_URL}/rest/v1/participants?id=eq.{phone}"
-            # Patch request to update
-            response = requests.patch(
-                url, 
-                json={'email': email}, 
-                headers={**get_supabase_headers(), "Prefer": "return=representation"}, # Return data to verify
-                timeout=10
-            )
+            headers = get_supabase_headers()
+            headers["Prefer"] = "return=representation"
             
-            if response.status_code not in [200, 204]:
-                return False, f"Supabase Error: {response.text}"
+            # Prepare data
+            data = json.dumps({'email': email}).encode('utf-8')
             
-            data = response.json()
-            if not data:
-                 return False, "No se encontró el usuario para actualizar."
-                 
-            return True, ""
+            # PATCH method needs to be specified as Request doesn't support it directly via method arg in older python versions simply?
+            # method='PATCH' is supported in Python 3.3+
+            req = urllib.request.Request(url, data=data, headers=headers, method='PATCH')
+            
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status not in [200, 204]:
+                    return False, f"Supabase Error: Status {response.status}"
+                
+                response_data = json.loads(response.read().decode('utf-8'))
+                if not response_data:
+                     return False, "No se encontró el usuario para actualizar."
+                     
+                return True, ""
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8')
+            print(f"HTTP Error saving to Supabase: {e.code} - {error_body}")
+            return False, f"HTTP Error {e.code}: {error_body}"
         except Exception as e:
             print(f"Error saving to Supabase: {e}")
             return False, str(e)
@@ -118,20 +127,17 @@ def save_email(phone, email):
     # Fallback: Save to CSV
     try:
         # We need to read all, update one, write all.
-        # But we need to write back using CSV headers.
         rows = []
         updated = False
         
-        # Read existing raw content to preserve structure
         if not os.path.exists(CSV_FILE):
-            return False, "Archivo CSV no encontrado"
+             return False, "Archivo CSV no encontrado"
 
         fieldnames = ['ID', 'nombre', 'parentesco', 'email']
         
         with open(CSV_FILE, mode='r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter=';')
             for row in reader:
-                # Check match using CSV header 'ID' which maps to phone
                 if str(row.get('ID', '')).strip() == phone:
                     row['email'] = email
                     updated = True
