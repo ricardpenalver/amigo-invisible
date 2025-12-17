@@ -6,6 +6,8 @@ import json
 import urllib.request
 import urllib.error
 from dotenv import load_dotenv
+import matcher
+import email_service
 
 # Load environment variables from .env file (if exists)
 load_dotenv()
@@ -212,6 +214,51 @@ def register_email():
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
         return jsonify({'success': False, 'message': f'Error interno del servidor: {str(e)}'}), 200
+
+@app.route('/api/admin/draw', methods=['POST'])
+def run_draw():
+    try:
+        # 1. Verify Admin Secret Key
+        provided_key = request.args.get('key')
+        admin_key = os.environ.get("ADMIN_SECRET_KEY")
+        
+        if not admin_key or provided_key != admin_key:
+            return jsonify({'success': False, 'message': 'No autorizado'}), 401
+            
+        # 2. Load participants
+        participants = load_data()
+        
+        # 3. Filter only those who have provided an email
+        valid_participants = [p for p in participants if p.get('email')]
+        
+        if len(valid_participants) < 2:
+            return jsonify({'success': False, 'message': 'No hay suficientes participantes con email registrado'}), 400
+            
+        # 4. Generate assignments
+        assignments = matcher.generate_assignments(valid_participants)
+        
+        if not assignments:
+            return jsonify({'success': False, 'message': 'No se pudo generar un sorteo válido con las restricciones actuales'}), 500
+            
+        # 5. Send emails
+        results = []
+        for giver, receiver in assignments:
+            success = email_service.send_assignment_email(
+                giver['email'], 
+                giver['name'], 
+                receiver['name']
+            )
+            results.append({'giver': giver['name'], 'success': success})
+            
+        return jsonify({
+            'success': True,
+            'message': f'Sorteo completado. Se enviaron {len(results)} correos.',
+            'results': results
+        })
+        
+    except Exception as e:
+        print(f"CRITICAL ERROR during draw: {e}")
+        return jsonify({'success': False, 'message': f'Error interno: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
