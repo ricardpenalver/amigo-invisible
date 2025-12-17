@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
-import pandas as pd
+import csv
 import os
+import io
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -27,70 +28,63 @@ COL_MAPPING = {
 INV_COL_MAPPING = {v: k for k, v in COL_MAPPING.items()}
 
 def load_data():
+    """
+    Returns a list of dictionaries with internal keys: phone, name, relationship, email
+    """
     if USE_SUPABASE:
         try:
             supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
             response = supabase.table('participants').select("*").execute()
-            data = response.data
+            data = response.data # List of dicts
             
-            # Convert to DataFrame to match existing logic structure
-            df = pd.DataFrame(data)
-            
-            # Map columns: Supabase returns 'id' (lowercase) usually, but we defined schema above.
-            # However, SQL is case insensitive but response keys might be lowercase.
-            # Let's handle standard Supabase lowercase response.
-            # Participant table: id, name, relationship, email
-            
-            # Helper to normalize keys if needed
-            if not df.empty:
-                 # If we created table with "ID", "nombre"... it might return as such or lowercase.
-                 # Best practice in Postgres is snake_case. 
-                 # Task Plan said: id, name, relationship, email.
-                 # But we need to match internal names: phone, name, relationship, email
-                 
-                 # Let's map whatever we get to internal
-                 # Expected DB columns: id, name, relationship, email
-                 rename_map = {
-                     'id': 'phone',
-                     'ID': 'phone',
-                     'nombre': 'name', 
-                     'name': 'name',
-                     'parentesco': 'relationship',
-                     'relationship': 'relationship',
-                     'email': 'email'
-                 }
-                 df = df.rename(columns=rename_map)
-            else:
-                 return pd.DataFrame(columns=['phone', 'name', 'relationship', 'email'])
-                 
-            return df
+            normalized_data = []
+            if data:
+                for row in data:
+                    # Supabase/Postgres might return keys in lowercase.
+                    # We map them to our internal structure.
+                    normalized_row = {
+                        'phone': str(row.get('id') or row.get('ID') or "").strip(),
+                        'name': row.get('name') or row.get('nombre') or "",
+                        'relationship': row.get('relationship') or row.get('parentesco') or "",
+                        'email': row.get('email') or ""
+                    }
+                    normalized_data.append(normalized_row)
+            return normalized_data
         except Exception as e:
             print(f"Error loading from Supabase: {e}")
-            # Fallback to CSV if connection fails? Or return empty?
-            # Let's return empty to avoid confusion if config is wrong
-            return pd.DataFrame(columns=['phone', 'name', 'relationship', 'email'])
+            return []
 
     # Fallback: Load from CSV
     if not os.path.exists(CSV_FILE):
-        return pd.DataFrame(columns=list(COL_MAPPING.keys()))
+        return []
     
-    df = pd.read_csv(CSV_FILE, sep=';', dtype={'ID': str})
-    df = df.rename(columns=INV_COL_MAPPING)
-    for col in COL_MAPPING.keys():
-        if col not in df.columns:
-            df[col] = ''
-    return df
+    data = []
+    try:
+        with open(CSV_FILE, mode='r', encoding='utf-8') as f:
+            # Detect separator if needed, but we enforced semicolon
+            reader = csv.DictReader(f, delimiter=';')
+            for row in reader:
+                # Row keys are CSV headers (ID, nombre, etc)
+                # Map to internal
+                internal_row = {
+                    'phone': str(row.get(COL_MAPPING['phone'], '')).strip(),
+                    'name': row.get(COL_MAPPING['name'], ''),
+                    'relationship': row.get(COL_MAPPING['relationship'], ''),
+                    'email': row.get(COL_MAPPING['email'], '')
+                }
+                data.append(internal_row)
+    except Exception as e:
+        print(f"Error reading CSV: {e}")
+        return []
+        
+    return data
 
 def save_email(phone, email):
     if USE_SUPABASE:
         try:
             supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-            # Update user where id == phone
-            # APIResponse has 'data' attribute
             response = supabase.table('participants').update({'email': email}).eq('id', phone).execute()
             
-            # Check for error in response if any (though usually it raises exception on error)
-            # If successful, data should not be empty if the row existed
             if not response.data:
                  return False, "No se encontró el usuario para actualizar."
                  
@@ -101,19 +95,38 @@ def save_email(phone, email):
 
     # Fallback: Save to CSV
     try:
-        df = load_data() # This loads from CSV if USE_SUPABASE is false
-        if phone in df['phone'].values:
-            df.loc[df['phone'] == phone, 'email'] = email
-            
-            # Save back
-            df_save = df.rename(columns=COL_MAPPING)
-            df_save.to_csv(CSV_FILE, sep=';', index=False)
+        # We need to read all, update one, write all.
+        # But we need to write back using CSV headers.
+        rows = []
+        updated = False
+        
+        # Read existing raw content to preserve structure
+        if not os.path.exists(CSV_FILE):
+            return False, "Archivo CSV no encontrado"
+
+        fieldnames = ['ID', 'nombre', 'parentesco', 'email']
+        
+        with open(CSV_FILE, mode='r', encoding='utf-8') as f:
+            reader = csv.DictReader(f, delimiter=';')
+            for row in reader:
+                # Check match using CSV header 'ID' which maps to phone
+                if str(row.get('ID', '')).strip() == phone:
+                    row['email'] = email
+                    updated = True
+                rows.append(row)
+        
+        if updated:
+            with open(CSV_FILE, mode='w', encoding='utf-8', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=';')
+                writer.writeheader()
+                writer.writerows(rows)
             return True, ""
+        
+        return False, "Usuario no encontrado en CSV"
+            
     except Exception as e:
         print(f"Error saving to CSV (Fallback): {e}")
         return False, str(e)
-    
-    return False, "Usuario no encontrado en CSV"
 
 @app.route('/')
 def index():
@@ -121,26 +134,25 @@ def index():
 
 @app.route('/api/check_user', methods=['POST'])
 def check_user():
-    data = request.json
-    phone_input = str(data.get('phone')).strip()
-    
-    df = load_data()
-    
-    # Check if phone exists
-    if df.empty:
-         return jsonify({'found': False, 'message': 'Base de datos no disponible'}), 404
-
-    user = df[df['phone'] == phone_input]
-    
-    if user.empty:
-        return jsonify({'found': False, 'message': 'Teléfono no encontrado'}), 404
-    
-    user_data = user.iloc[0]
-    return jsonify({
-        'found': True,
-        'name': user_data['name'],
-        'message': f"Gracias {user_data['name']}"
-    })
+    try:
+        data = request.json
+        phone_input = str(data.get('phone')).strip()
+        
+        participants = load_data()
+        
+        # Find user
+        user = next((p for p in participants if p['phone'] == phone_input), None)
+        
+        if not user:
+            return jsonify({'found': False, 'message': 'Teléfono no encontrado'}), 200 # Return 200 for JSON visibility
+        
+        return jsonify({
+            'found': True,
+            'name': user['name'],
+            'message': f"Gracias {user['name']}"
+        })
+    except Exception as e:
+        return jsonify({'found': False, 'message': f'Error interno: {str(e)}'}), 200
 
 @app.route('/api/register_email', methods=['POST'])
 def register_email():
@@ -150,20 +162,20 @@ def register_email():
         email_input = str(data.get('email')).strip()
         
         # Verify user exists first
-        df = load_data()
-        if phone_input not in df['phone'].values:
-            return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 200 # Changed to 200 to ensure JSON
+        participants = load_data()
+        user_exists = any(p['phone'] == phone_input for p in participants)
+        
+        if not user_exists:
+            return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 200
         
         # Save
         success, error_msg = save_email(phone_input, email_input)
         
         if not success:
-             # Return as 200 but with success=False so frontend indicates error
-             # This prevents Vercel from overriding the body with HTML 500
              return jsonify({'success': False, 'message': f'Error guardando: {error_msg}'}), 200
         
-        # Get user name again for the success message
-        user_name = df[df['phone'] == phone_input].iloc[0]['name']
+        # Get user name again manually
+        user_name = next((p['name'] for p in participants if p['phone'] == phone_input), "")
         
         return jsonify({
             'success': True,
@@ -171,7 +183,7 @@ def register_email():
         })
     except Exception as e:
         print(f"CRITICAL ERROR: {e}")
-        return jsonify({'success': False, 'message': f'Error interno del servidor: {str(e)}'}), 200 # Changed to 200
+        return jsonify({'success': False, 'message': f'Error interno del servidor: {str(e)}'}), 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=8000)
