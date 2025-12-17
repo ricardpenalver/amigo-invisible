@@ -1,18 +1,19 @@
 :root {
-    --primary: #FF3B30; /* Christmas Red */
+    --primary: #FF3B30;
+    /* Christmas Red */
     --primary-hover: #D6332A;
-    --background: #F2F2F7;
-    --card-bg: #FFFFFF;
-    --text-main: #1C1C1E;
-    --text-muted: #8E8E93;
-    --border-radius: 20px;
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    --background: #fdfdfd;
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --text-main: #1d1d1f;
+    --text-muted: #86868b;
+    --border-radius: 24px;
+    --shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
     --font-family: 'Outfit', sans-serif;
 }
 
 body {
     font-family: var(--font-family);
-    background-color: var(--background);
+    background: radial-gradient(circle at top right, #fff5f5 0%, #ffffff 50%, #f2f2f7 100%);
     color: var(--text-main);
     display: flex;
     justify-content: center;
@@ -24,44 +25,56 @@ body {
 
 .container {
     width: 100%;
-    max-width: 440px;
+    max-width: 480px;
     text-align: center;
+}
+
+header {
+    margin-bottom: 3rem;
 }
 
 header h1 {
     font-weight: 600;
-    font-size: 2.2rem;
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+    font-size: 2.8rem;
+    margin-bottom: 0.2rem;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    color: var(--text-main);
 }
 
-.header-icon {
-    height: 1.2em;
-    width: auto;
+.sub-title {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+    letter-spacing: 0;
 }
 
 header p {
     color: var(--text-muted);
-    margin-bottom: 2.5rem;
+    font-size: 1.1rem;
+    margin-top: 1rem;
 }
 
 .highlight {
     color: var(--primary);
+    font-weight: 700;
 }
 
 .card {
     background: var(--card-bg);
-    padding: 2.5rem 2rem;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 3rem 2.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
     transition: all 0.4s ease;
     opacity: 0;
     transform: translateY(20px);
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
 }
 
 .card.active {
@@ -72,8 +85,15 @@ header p {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 h2 {
@@ -147,8 +167,13 @@ input:focus {
 }
 
 @keyframes bounce {
-    from { transform: translateY(0); }
-    to { transform: translateY(-10px); }
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-10px);
+    }
 }
 
 footer {
