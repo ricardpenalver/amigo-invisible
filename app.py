@@ -86,11 +86,18 @@ def save_email(phone, email):
         try:
             supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
             # Update user where id == phone
-            data, count = supabase.table('participants').update({'email': email}).eq('id', phone).execute()
-            return True
+            # APIResponse has 'data' attribute
+            response = supabase.table('participants').update({'email': email}).eq('id', phone).execute()
+            
+            # Check for error in response if any (though usually it raises exception on error)
+            # If successful, data should not be empty if the row existed
+            if not response.data:
+                 return False, "No se encontró el usuario para actualizar."
+                 
+            return True, ""
         except Exception as e:
             print(f"Error saving to Supabase: {e}")
-            return False
+            return False, str(e)
 
     # Fallback: Save to CSV
     try:
@@ -101,11 +108,12 @@ def save_email(phone, email):
             # Save back
             df_save = df.rename(columns=COL_MAPPING)
             df_save.to_csv(CSV_FILE, sep=';', index=False)
-            return True
+            return True, ""
     except Exception as e:
         print(f"Error saving to CSV (Fallback): {e}")
+        return False, str(e)
     
-    return False
+    return False, "Usuario no encontrado en CSV"
 
 @app.route('/')
 def index():
@@ -147,10 +155,10 @@ def register_email():
             return jsonify({'success': False, 'message': 'Usuario no encontrado'}), 404
         
         # Save
-        success = save_email(phone_input, email_input)
+        success, error_msg = save_email(phone_input, email_input)
         
         if not success:
-             return jsonify({'success': False, 'message': 'Error guardando datos. Posible error de conexión con la base de datos.'}), 500
+             return jsonify({'success': False, 'message': f'Error guardando: {error_msg}'}), 500
         
         # Get user name again for the success message
         user_name = df[df['phone'] == phone_input].iloc[0]['name']
