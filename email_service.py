@@ -32,6 +32,15 @@ def send_assignment_email(to_email, giver_name, receiver_name):
             <div style="background-color: #f9f9f9; padding: 15px; text-align: center; margin: 20px 0; border-radius: 5px;">
                 <h2 style="color: #0c0; margin: 0; font-size: 24px;">✨ {receiver_name} ✨</h2>
             </div>
+
+            <div style="background-color: #fff5f5; border: 1px solid #d42426; padding: 15px; margin: 20px 0; border-radius: 8px;">
+                <h3 style="color: #d42426; margin-top: 0; font-size: 16px; text-align: center;">📜 NORMAS DE PARTICIPACIÓN</h3>
+                <ul style="font-size: 14px; color: #555; padding-left: 20px;">
+                    <li>💰 El importe máximo es de <strong>30 €</strong></li>
+                    <li>🎫 Hay que incluir <strong>ticket regalo</strong></li>
+                    <li>💭 Si se piensa en el regalado es más fácil acertar :)</li>
+                </ul>
+            </div>
             
             <p style="text-align: center; font-size: 12px; color: #777;">
                 (Shhh... es un secreto. No se lo digas a nadie)
@@ -91,6 +100,15 @@ def send_admin_notification(admin_email):
             <p style="font-size: 16px; line-height: 1.6; text-align: center; font-weight: bold; color: #0c0;">
                 ¡Ya puedes activar el sorteo y enviaremos los mails a todos los participantes!
             </p>
+
+            <div style="background-color: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin: 25px 0; border-radius: 10px;">
+                <h3 style="color: #333; margin-top: 0; font-size: 16px; text-align: center;">📜 NORMAS DE PARTICIPACIÓN</h3>
+                <ul style="font-size: 14px; color: #555; padding-left: 20px; text-align: left; display: inline-block;">
+                    <li>💰 El importe máximo es de <strong>30 €</strong></li>
+                    <li>🎫 Hay que incluir <strong>ticket regalo</strong></li>
+                    <li>💭 Si se piensa en el regalado es más fácil acertar :)</li>
+                </ul>
+            </div>
             
             <div style="background-color: #fff5f5; border: 1px dashed #d42426; padding: 15px; text-align: center; margin: 25px 0; border-radius: 10px;">
                 <p style="margin: 0; font-size: 14px; color: #555;">Recuerda usar tu ADMIN_SECRET_KEY para disparar el sorteo:</p>
