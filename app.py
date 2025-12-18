@@ -204,26 +204,36 @@ def register_email():
         if not success:
              return jsonify({'success': False, 'message': f'Error guardando: {error_msg}'}), 200
         
-        # --- NEW: Check if everyone is registered ---
+        # --- AUTO-DRAW: Execute draw when everyone is registered ---
         try:
             # Re-load data to check updated status
             all_participants = load_data()
-            emails_found = [p.get('name') for p in all_participants if p.get('email')]
+            emails_found = [p for p in all_participants if p.get('email')]
             total_count = len(all_participants)
             registered_count = len(emails_found)
             
             print(f"DEBUG: Registration progress: {registered_count}/{total_count}")
             
             if total_count > 0 and registered_count == total_count:
-                admin_email = os.environ.get("EMAIL_USER")
-                print(f"DEBUG: All registered! Attempting to notify admin: {admin_email}")
-                if admin_email:
-                    success_notify = email_service.send_admin_notification(admin_email)
-                    print(f"DEBUG: Admin notification result: {success_notify}")
+                print("DEBUG: All registered! Executing automatic draw...")
+                
+                # Generate assignments
+                assignments = matcher.generate_assignments(emails_found)
+                
+                if assignments:
+                    print(f"DEBUG: Generated {len(assignments)} assignments. Sending emails...")
+                    for giver, receiver in assignments:
+                        success = email_service.send_assignment_email(
+                            giver['email'], 
+                            giver['name'], 
+                            receiver['name']
+                        )
+                        print(f"DEBUG: Email to {giver['name']}: {'OK' if success else 'FAILED'}")
+                    print("DEBUG: Automatic draw completed!")
                 else:
-                    print("DEBUG: Admin email (EMAIL_USER) not found in environment.")
+                    print("DEBUG ERROR: Could not generate valid assignments")
         except Exception as e:
-            print(f"DEBUG ERROR: Admin notification failure: {e}")
+            print(f"DEBUG ERROR: Auto-draw failure: {e}")
         # ---------------------------------------------
 
         # Get user name again manually
