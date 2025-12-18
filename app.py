@@ -240,8 +240,8 @@ def register_email():
 @app.route('/api/admin/draw', methods=['POST'])
 def run_draw():
     try:
-        # 1. Verify Admin Secret Key
-        provided_key = request.args.get('key')
+        # 1. Verify Admin Secret Key (from header for security)
+        provided_key = request.headers.get('X-Admin-Key')
         admin_key = os.environ.get("ADMIN_SECRET_KEY")
         
         if not admin_key or provided_key != admin_key:
