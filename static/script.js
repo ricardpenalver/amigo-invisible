@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stage1 = document.getElementById('stage-1');
     const stage2 = document.getElementById('stage-2');
     const stage3 = document.getElementById('stage-3');
+    const stageNotFound = document.getElementById('stage-not-found');
 
     const btnCheck = document.getElementById('btn-check');
     const btnSubmit = document.getElementById('btn-submit');
@@ -57,7 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showStage(stage1, stage2);
                 setTimeout(() => emailInput.focus(), 400);
             } else {
-                phoneError.textContent = data.message || 'Error al buscar el número.';
+                // Mostrar la pantalla de "no encontrado" en lugar del mensaje de error
+                showStage(stage1, stageNotFound);
             }
         } catch (error) {
             console.error(error);
